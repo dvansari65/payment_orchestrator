@@ -1,0 +1,74 @@
+[workspace]
+members = [
+    "crates/domain",
+    "crates/ledger",
+    "crates/application",
+    "crates/providers",
+    "crates/persistence",
+    "crates/common",
+     "crates/providers", 
+     "services/worker", 
+     "services/api",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+] }
+axum = { version = "0.8", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.7", features = [
+    "trace",
+    "cors",
+    "request-id",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
+sqlx = { version = "0.9", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls-ring",
+    "postgres",
+    "uuid",
+    "time",
+    "json",
+    "macros",
+    "migrate",
+] }
+dotenv = "0.15.0"
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1.41"
+# Logging and observability
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "json",
+] }
+
+# Testing
+proptest = "1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "warn"
+unwrap_used = "warn"
+
+[profile.release]
+lto = "thin"

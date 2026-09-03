@@ -1,0 +1,21 @@
+[package]
+name = "persistence"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+dotenv.workspace = true
+axum.workspace = true
+tracing-subscriber.workspace = true
