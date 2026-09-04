@@ -7,6 +7,10 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+tokio.workspace = true
+sqlx.workspace = true
+persistence = { path = "../../crates/persistence" }
+dotenv.workspace = true
 
 [lints]
 workspace = true

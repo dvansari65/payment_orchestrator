@@ -6,9 +6,9 @@ members = [
     "crates/providers",
     "crates/persistence",
     "crates/common",
-     "crates/providers", 
-     "services/worker", 
-     "services/api",
+    "crates/providers", 
+    "services/worker", 
+    "services/api",
 ]
 resolver = "3"
 

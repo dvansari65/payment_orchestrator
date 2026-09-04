@@ -19,3 +19,4 @@ tokio.workspace = true
 dotenv.workspace = true
 axum.workspace = true
 tracing-subscriber.workspace = true
+thiserror.workspace = true
