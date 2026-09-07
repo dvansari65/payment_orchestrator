@@ -18,3 +18,4 @@ pub async fn ping_db(db_pool:&DbPool)->Result<(),sqlx::Error>{
             .fetch_one(db_pool).await?;
     Ok(())
 }
+
