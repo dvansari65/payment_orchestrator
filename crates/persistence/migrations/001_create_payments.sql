@@ -6,13 +6,12 @@ CREATE TABLE order {
     payment_status                  payment_status NOT NULL DEFAULT "pending"
     merchent_id                     UUID REFERENCES merchant(merchant_id)
     meta_data                       JSON
-    gateway_provider                        TEXT NOT NULL 
-    authorized_amount           BIGINT
-    captured_amount           BIGINT
-    refunded_amount           BIGINT
+    gateway_provider                gateway_provider NOT NULL DEFAULT "stripe"
+    authorized_amount           BIGINT  NULL
+    captured_amount           BIGINT    NULL
+    refunded_amount           BIGINT    NULL
     created_at                      TIMESTAMP   
     updated_at                      TIMESTAMP  
-
 }
  
 CREATE TABLE merchant {
@@ -112,4 +111,9 @@ CREATE TYPE refunds_status AS ENUM {
     "failed",
     "pending",
     "success"
+}
+
+CREATE TYPE gateway_provider AS ENUM {
+    "razor_pay",
+    "stripe"
 }
