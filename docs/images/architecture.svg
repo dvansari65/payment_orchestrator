@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 476" width="960" height="476" role="img" aria-labelledby="arch-title arch-desc">
+  <title id="arch-title">Payment orchestrator runtime architecture</title>
+  <desc id="arch-desc">The merchant calls services/api over HTTPS with an API key. The API records the payment and an outbox row in PostgreSQL in one transaction and returns 201. services/worker claims outbox jobs from PostgreSQL, calls Stripe or Razorpay, and sends signed webhooks to the merchant. Providers send signed webhooks to the API.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#6B7280"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+      .name  { font-size: 18px; font-weight: 600; fill: #1F2937; text-anchor: middle; }
+      .sub   { font-size: 14px; fill: #6B7280; text-anchor: middle; }
+      .label { font-size: 13px; fill: #4B5563; }
+      .mono  { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; fill: #4B5563; }
+      .box   { fill: #FFFFFF; stroke: #9CA3AF; stroke-width: 1.5; }
+      .svc   { fill: #EAF1FB; stroke: #1E5AA8; stroke-width: 2.5; }
+      .edge  { fill: none; stroke: #6B7280; stroke-width: 1.6; }
+      .dash  { stroke-dasharray: 6 5; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="959" height="475" rx="14" fill="#FFFFFF" stroke="#E5E7EB"/>
+
+  <!-- connectors (drawn first, so boxes sit on top) -->
+  <path class="edge" d="M240 88H373" marker-end="url(#arrow)"/>
+  <path class="edge dash" d="M375 118H242" marker-end="url(#arrow)"/>
+  <path class="edge" d="M720 103H587" marker-end="url(#arrow)"/>
+  <path class="edge" d="M410 144L222 289" marker-end="url(#arrow)"/>
+  <path class="edge" d="M242 333H373" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="edge" d="M585 318L773 146" marker-end="url(#arrow)"/>
+  <path class="edge dash" d="M480 374V424H16V103H28" marker-end="url(#arrow)"/>
+
+  <!-- connector labels -->
+  <text class="label" x="307" y="77" text-anchor="middle">HTTPS + API key</text>
+  <text class="label" x="307" y="139" text-anchor="middle">201 + payment</text>
+  <text class="label" x="653" y="92" text-anchor="middle">signed webhooks</text>
+  <text class="label" x="350" y="207">intent + outbox row,</text>
+  <text class="label" x="350" y="226">one transaction</text>
+  <text class="label" x="307" y="322" text-anchor="middle">claims jobs</text>
+  <text class="mono"  x="307" y="352" text-anchor="middle">SKIP LOCKED</text>
+  <text class="label" x="690" y="258">capture, refund, poll</text>
+  <text class="label" x="248" y="448" text-anchor="middle">merchant webhooks (signed, via outbox)</text>
+
+  <!-- components -->
+  <g>
+    <rect class="box" x="30" y="62" width="210" height="82" rx="10"/>
+    <text class="name" x="135" y="98">Merchant</text>
+    <text class="sub"  x="135" y="122">backend + checkout page</text>
+  </g>
+  <g>
+    <rect class="svc" x="375" y="62" width="210" height="82" rx="10"/>
+    <text class="name" x="480" y="98">services/api</text>
+    <text class="sub"  x="480" y="122">auth, idempotency, ingest</text>
+  </g>
+  <g>
+    <rect class="box" x="720" y="62" width="210" height="82" rx="10"/>
+    <text class="name" x="825" y="98">Providers</text>
+    <text class="sub"  x="825" y="122">Stripe, Razorpay</text>
+  </g>
+  <g>
+    <rect class="box" x="30" y="292" width="210" height="82" rx="10"/>
+    <text class="name" x="135" y="328">PostgreSQL</text>
+    <text class="sub"  x="135" y="352">payments, outbox, ledger</text>
+  </g>
+  <g>
+    <rect class="svc" x="375" y="292" width="210" height="82" rx="10"/>
+    <text class="name" x="480" y="328">services/worker</text>
+    <text class="sub"  x="480" y="352">outbox, reconcile, expiry</text>
+  </g>
+</svg>

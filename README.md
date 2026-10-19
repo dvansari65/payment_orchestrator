@@ -27,12 +27,24 @@ That split buys three things:
 - **An independent record.** When a provider's dashboard and your books disagree, the
   ledger is what answers to the merchant.
 
+## Architecture
+
+<p align="center">
+  <img src="docs/images/architecture.svg" alt="Merchant calls services/api with an API key; the API writes the payment and an outbox row to PostgreSQL in one transaction and returns 201. services/worker claims outbox jobs, calls Stripe or Razorpay, and sends signed webhooks to the merchant. Providers send signed webhooks back to the API." width="100%">
+</p>
+
+Two deployable services share one Postgres database. **`services/api`** is thin and
+fast: it authenticates, deduplicates, records intent and returns. **`services/worker`**
+does everything that involves waiting on someone else: provider calls, webhook
+processing, retries, expiry and reconciliation. The API never calls a provider directly
+— it leaves a row in the outbox, and the worker picks it up.
+
 ## The model
 
 Two ideas carry the design.
 
 **A payment is the intent; an attempt is one try at one provider.** One payment
-(`order_id`) has many rows in `payment_attempts`. A decline at Stripe does not fail the
+(`payments.id`) has many rows in `payment_attempts`. A decline at Stripe does not fail the
 payment — it opens a new attempt at Razorpay. To the merchant it is still one payment
 that eventually succeeded.
 
@@ -42,9 +54,23 @@ self-correcting: write the intent before the call, treat webhooks as unreliable,
 a reconciler that compares your state against the provider's until they agree.
 
 Money moves in three steps, not one — authorize (a hold), capture (claiming it), settle
-(it lands) — which is why `order` carries `authorized_amount`, `captured_amount` and
+(it lands) — which is why `payments` carries `authorized_amount`, `captured_amount` and
 `refunded_amount` separately, with the invariant
 `0 <= captured <= authorized <= amount` and `0 <= refunded <= captured`.
+
+## Payment lifecycle
+
+<p align="center">
+  <img src="docs/images/payment-lifecycle.svg" alt="Payment states: initiated, processing, authorized, captured, settled along the top; expired, failed, cancelled and refunded below. Capture is the point of no return." width="100%">
+</p>
+
+The top row is the happy path; the bottom row holds the exits. Before capture, a payment
+can still be walked back for free by voiding the hold. After capture, the only way back
+is a refund, which costs the processing fee and shows on the cardholder's statement.
+
+The create endpoint only ever writes `initiated`. Every later transition is made by the
+worker, in response to a provider call or webhook, and only forward along these arrows —
+so a duplicate or out-of-order webhook can never move a payment backwards.
 
 ## Repository layout
 
