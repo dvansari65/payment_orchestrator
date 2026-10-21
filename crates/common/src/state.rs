@@ -4,28 +4,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::errors::ApiError;
 
-
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum PaymentStatus {
     Initiated,
     Cancelled,
     Failed,
     Processing,
     Refunded,
-    Success
+    Success,
 }
 
-#[derive(Debug, Serialize,Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Currency {
     INR,
-    USD
+    USD,
 }
 
 impl Currency {
-    pub fn as_str(&self)-> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Currency::INR => "INR",
-            Currency::USD => "USD"
+            Currency::USD => "USD",
         }
     }
 }
@@ -35,7 +34,9 @@ impl FromStr for Currency {
         match s {
             "INR" => Ok(Self::INR),
             "USD" => Ok(Self::USD),
-            other => Err(ApiError::Internal(format!("Internal server error:{other}!")))
+            other => Err(ApiError::Internal(format!(
+                "Internal server error:{other}!"
+            ))),
         }
     }
 }
@@ -49,12 +50,11 @@ impl PaymentStatus {
             PaymentStatus::Processing => "processing",
             PaymentStatus::Refunded => "refunded",
             PaymentStatus::Success => "success",
-            
         }
     }
 }
 
-impl FromStr for PaymentStatus  {
+impl FromStr for PaymentStatus {
     type Err = ApiError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -64,7 +64,9 @@ impl FromStr for PaymentStatus  {
             "processing" => Ok(PaymentStatus::Processing),
             "refunded" => Ok(PaymentStatus::Refunded),
             "success" => Ok(PaymentStatus::Success),
-            other => Err(ApiError::Internal(format!("Invalid payment status:{other}!")))
+            other => Err(ApiError::Internal(format!(
+                "Invalid payment status:{other}!"
+            ))),
         }
     }
 }

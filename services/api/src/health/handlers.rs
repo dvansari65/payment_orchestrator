@@ -13,7 +13,10 @@ pub async fn ready(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
         Ok(()) => (StatusCode::OK, Json(json!({ "status": "ok" }))),
         Err(e) => {
             tracing::warn!(error = %e, "readiness check failed");
-            (StatusCode::SERVICE_UNAVAILABLE, Json(json!({ "status": "unavailable" })))
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({ "status": "unavailable" })),
+            )
         }
     }
 }

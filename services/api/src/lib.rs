@@ -4,9 +4,10 @@
 //! and mapping errors to status codes. Business rules live in `domain` and
 //! `application`; SQL lives in `persistence`.
 
+pub mod auth;
 pub mod config;
 pub mod health;
+pub mod pagination;
 pub mod payments;
 pub mod router;
 pub mod state;
-pub mod auth;

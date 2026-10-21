@@ -31,7 +31,6 @@ pub enum ApiError {
 
     #[error("{0}")]
     Internal(String),
-
 }
 
 impl IntoResponse for ApiError {
@@ -42,23 +41,27 @@ impl IntoResponse for ApiError {
             Self::Conflict(_) => (StatusCode::CONFLICT, "conflict"),
             Self::NotImplemented => (StatusCode::NOT_IMPLEMENTED, "not_implemented"),
             Self::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
-            Self::Unauthorized => (StatusCode::UNAUTHORIZED,"unauthorized_request"),
-            Self::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR,"internal_error")
+            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized_request"),
+            Self::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
         };
-        
+
         // Never send database details to the client. Log them instead.
         let message = match &self {
             Self::Database(e) => {
                 tracing::error!(error = %e, "database error");
                 "internal server error".to_string()
-            },
+            }
             Self::Internal(detail) => {
                 tracing::error!(%detail, "internal error");
                 "internal server error".to_string()
-            },
+            }
             other => other.to_string(),
         };
 
-        (status, Json(json!({ "error": { "code": code, "message": message } }))).into_response()
+        (
+            status,
+            Json(json!({ "error": { "code": code, "message": message } })),
+        )
+            .into_response()
     }
 }

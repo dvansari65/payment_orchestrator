@@ -2,16 +2,22 @@
 
 use axum::{
     Json,
-    extract::State,
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
 };
 use common::{errors::ApiError, helpers::read_idemp_key};
-use persistence::payment::{NewPayment, insert_payment};
+use persistence::payment::{
+    NewPayment, PaymentListFilter, find_payment, insert_payment, list_payments,
+};
 use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
 use crate::{
     auth::AuthMerchant,
-    payments::dto::{CreatePaymentRequest, PaymentResponse},
+    pagination::decode_cursor,
+    payments::dto::{
+        CreatePaymentRequest, ListPaymentsQuery, PaymentListResponse, PaymentResponse,
+    },
     state::AppState,
 };
 
@@ -39,5 +45,42 @@ pub async fn create_payment(
 
     let response = insert_payment(&pool, inputs).await?;
     let payment_row = PaymentResponse::try_from(response)?;
-    Ok((StatusCode::ACCEPTED, Json(payment_row)))
+    Ok((StatusCode::OK, Json(payment_row)))
+}
+
+pub async fn get_payment(
+    merchant: AuthMerchant,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<PaymentResponse>, ApiError> {
+    let payment = find_payment(&state.db, &id, &merchant.id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    Ok(Json(PaymentResponse::try_from(payment)?))
+}
+
+pub async fn get_payment_list(
+    merchant: AuthMerchant,
+    State(state): State<AppState>,
+    Query(params): Query<ListPaymentsQuery>,
+) -> Result<Json<PaymentListResponse>, ApiError> {
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
+    let cursor = params.cursor.as_deref().map(decode_cursor).transpose()?;
+
+    if let (Some(from), Some(to)) = (params.created_gte, params.created_lt) {
+        if from >= to {
+            return Err(ApiError::BadRequest(
+                "created_gte must be before created_lt".into(),
+            ));
+        }
+    }
+    let payment_filter = PaymentListFilter {
+        cursor,
+        limit: limit as i64,
+        status: params.status.as_deref(),
+        created_gte: params.created_gte,
+        created_lt: params.created_lt,
+    };
+    let page = list_payments(&state.db, &merchant.id, &payment_filter).await?;
+    Ok(Json(PaymentListResponse::try_from(page)?))
 }
