@@ -6,7 +6,9 @@
 
 pub mod auth;
 pub mod config;
+pub mod error;
 pub mod health;
+pub mod helpers;
 pub mod pagination;
 pub mod payments;
 pub mod router;

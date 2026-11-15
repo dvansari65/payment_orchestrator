@@ -1,6 +1,5 @@
-use crate::state::AppState;
+use crate::{error::ApiError, state::AppState};
 use axum::{extract::FromRequestParts, http::request::Parts};
-use common::errors::ApiError;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;

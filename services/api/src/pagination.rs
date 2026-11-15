@@ -1,6 +1,7 @@
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use common::errors::ApiError;
 use uuid::Uuid;
+
+use crate::error::ApiError;
 
 pub fn encode_cursor(id: Uuid) -> String {
     URL_SAFE_NO_PAD.encode(id.as_bytes())

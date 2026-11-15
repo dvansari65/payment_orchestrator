@@ -1,18 +1,15 @@
 // Request and response structs for the payments endpoints.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use axum::response::Result;
-use common::{
-    errors::ApiError,
-    state::{Currency, PaymentStatus},
-};
-use persistence::payment::{PaymentPage, PaymentRow};
+use common::state::{Currency, PaymentStatus, RefundStatus};
+use persistence::payment::{PaymentPage, PaymentRow, RefundRow};
 use serde::{Deserialize, Serialize};
 use sqlx::types::time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::pagination::encode_cursor;
+use crate::{error::ApiError, pagination::encode_cursor};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PaymentResponse {
@@ -40,7 +37,6 @@ pub struct CreatePaymentRequest {
 
 impl TryFrom<PaymentRow> for PaymentResponse {
     type Error = ApiError;
-
     fn try_from(value: PaymentRow) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.id,
@@ -93,6 +89,36 @@ impl TryFrom<PaymentPage> for PaymentListResponse {
             data,
             has_more: page.has_more,
             next_cursor,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CreateRefundRequest {
+    pub reason: Option<String>,
+    pub amount: Option<i64>,
+}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RefundResponse {
+    pub id: Uuid,
+    pub payment_id: Uuid,
+    pub amount: i64,
+    pub status: RefundStatus,
+    pub reason: Option<String>,
+    pub created_at: OffsetDateTime,
+}
+
+impl TryFrom<RefundRow> for RefundResponse {
+    type Error = ApiError;
+    fn try_from(value: RefundRow) -> Result<Self, Self::Error> {
+        let status = RefundStatus::from_str(&value.status)?;
+        Ok(Self {
+            id: value.id,
+            payment_id: value.payment_id,
+            amount: value.amount,
+            status: status,
+            reason: value.reason,
+            created_at: value.created_at,
         })
     }
 }

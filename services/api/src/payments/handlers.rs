@@ -5,18 +5,20 @@ use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
 };
-use common::{errors::ApiError, helpers::read_idemp_key};
 use persistence::payment::{
-    NewPayment, PaymentListFilter, find_payment, insert_payment, list_payments,
+    New, NewPayment, PaymentListFilter, find_payment, insert_payment, list_payments, queue_refund,
 };
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
     auth::AuthMerchant,
+    error::ApiError,
+    helpers::{hash_refund_request, read_idemp_key},
     pagination::decode_cursor,
     payments::dto::{
-        CreatePaymentRequest, ListPaymentsQuery, PaymentListResponse, PaymentResponse,
+        CreatePaymentRequest, CreateRefundRequest, ListPaymentsQuery, PaymentListResponse,
+        PaymentResponse, RefundResponse,
     },
     state::AppState,
 };
@@ -83,4 +85,25 @@ pub async fn get_payment_list(
     };
     let page = list_payments(&state.db, &merchant.id, &payment_filter).await?;
     Ok(Json(PaymentListResponse::try_from(page)?))
+}
+
+pub async fn create_refund(
+    merchant: AuthMerchant,
+    State(state): State<AppState>,
+    header: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(body): Json<CreateRefundRequest>,
+) -> Result<Json<RefundResponse>, ApiError> {
+    let idemp_key = read_idemp_key(&header)?;
+    let request_hash = hash_refund_request(id, &body)?;
+    let inputs = New {
+        payment_id: id,
+        reason: body.reason.as_deref(),
+        merchant_id: merchant.id,
+        idemp_key: idemp_key.as_str(),
+        amount: body.amount,
+        request_hash: &request_hash,
+    };
+    let refund = queue_refund(&inputs, &state.db).await?;
+    Ok(Json(RefundResponse::try_from(refund)?))
 }
