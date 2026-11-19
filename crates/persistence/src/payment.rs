@@ -43,6 +43,8 @@ pub enum CaptureError {
     Database(#[from] sqlx::Error),
     #[error("Invalid amount!")]
     InvalidAmount,
+    #[error("request hash not matched!")]
+    InvalidRequestHash,
 }
 #[derive(Debug, thiserror::Error)]
 pub enum RefundError {
@@ -105,6 +107,14 @@ pub struct PaymentListFilter<'a> {
 pub struct PaymentPage {
     pub rows: Vec<PaymentRow>,
     pub has_more: bool,
+}
+
+pub struct CancelPaymemt<'a> {
+    pub payment_id:Uuid,
+    pub request_hash:&'a str,
+    pub idemp_key:&'a str,
+    pub merchant_id:Uuid,
+    pub resource_id:Uuid
 }
 
 pub async fn insert_payment(pool: &DbPool, new: NewPayment<'_>) -> Result<PaymentRow, sqlx::Error> {
@@ -269,12 +279,45 @@ pub async fn find_authorized_payment_to_capture(
     Ok(payment)
 }
 
-pub async fn find_authorized_payment_to_cancel(
+pub async fn cancel_payment(
     pool: &DbPool,
-    payment_id: &Uuid,
-    merchant_id: &Uuid,
-) -> Result<PaymentRow, CaptureError> {
+    cancel_payment_input:CancelPaymemt<'_>,
+) -> Result<(), CaptureError> {
     let mut tx = pool.begin().await?;
+    let claimed : Option<Uuid>  = sqlx::query_scalar(
+        r#"
+            INSERT INTO idempotency_keys (
+                merchant_id , idemp_key ,request_hash,resource_type , resource_id , expires_at 
+            )
+            VALUES ( $1 , $2 , $3 , "cancel" , $4 , now + interval '24 hours' )
+            ON CONFLICT  ( merchant_id , idemp_key ) DO NOTHING
+            RETURNING resource_id
+        "#
+    )
+    .bind(cancel_payment_input.merchant_id)
+    .bind(cancel_payment_input.idemp_key)
+    .bind(cancel_payment_input.request_hash)
+    .bind(cancel_payment_input.resource_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    if claimed.is_none() {
+        let request_hash: String  = sqlx::query_scalar(
+            r#"
+                SELECT request_hash  FROM idempotency_keys
+                WHERE merchant_id = $1 AND idemp_key = $2
+            "#
+        )
+        .bind(cancel_payment_input.merchant_id)
+        .bind(cancel_payment_input.idemp_key)
+        .fetch_one(&mut *tx)
+        .await?;
+    
+        if request_hash != cancel_payment_input.request_hash {
+            return Err(CaptureError::InvalidRequestHash);
+        }
+       return Ok(())
+    }
     let payment_row = sqlx::query_as::<_, PaymentRow>(
         r#"
             SELECT id, merchant_id, amount, currency, status,
@@ -284,15 +327,15 @@ pub async fn find_authorized_payment_to_cancel(
             WHERE id = $1 AND merchant_id = $2
         "#,
     )
-    .bind(payment_id)
-    .bind(merchant_id)
+    .bind(cancel_payment_input.payment_id)
+    .bind(cancel_payment_input.merchant_id)
     .fetch_optional(&mut *tx)
     .await?
     .ok_or(CaptureError::NotFound)?;
 
     // cross check that we are performing right action by checking only settled and authorized status
-    // is it feasible to cancel payment when status is other than  authorized and settled
-    if payment_row.status != PaymentStatus::Authorized.as_str() {
+    // Is it feasible to cancel payment when status is other than  authorized and settled
+    if payment_row.status == PaymentStatus::Captured.as_str() || payment_row.status == PaymentStatus::Settled.as_str() {
         return Err(CaptureError::InvalidStatus(payment_row.status));
     }
     sqlx::query(
@@ -308,7 +351,7 @@ pub async fn find_authorized_payment_to_cancel(
 
     tx.commit().await?;
 
-    Ok(payment_row)
+    Ok(())
 }
 
 // partial refund allowed
@@ -321,7 +364,7 @@ pub async fn queue_refund(new: &New<'_>, pool: &DbPool) -> Result<RefundRow, Ref
     }
 
     let mut tx = pool.begin().await?;
-
+    // NOTE : i think we have to give resource_id from the input not newly generated uuid
     let claimed: Option<Uuid> = sqlx::query_scalar(
         r#"
             INSERT INTO idempotency_keys (merchant_id,idemp_key,request_hash,

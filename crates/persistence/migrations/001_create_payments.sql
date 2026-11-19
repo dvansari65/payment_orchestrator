@@ -97,7 +97,7 @@ CREATE TABLE idempotency_keys (
     merchant_id    UUID NOT NULL REFERENCES merchants(id),
     idemp_key      TEXT NOT NULL CHECK (char_length(idemp_key) BETWEEN 1 AND 255),
     request_hash   TEXT NOT NULL,
-    resource_type  TEXT NOT NULL CHECK (resource_type IN ('payment', 'refund')),
+    resource_type  TEXT NOT NULL CHECK (resource_type IN ('payment', 'refund','cancel')),
     resource_id    UUID NOT NULL,
     expires_at     TIMESTAMPTZ NOT NULL,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
